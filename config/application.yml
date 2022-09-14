@@ -1,0 +1,9 @@
+set:
+  base: bdpool
+  fr: en
+  to: zh
+
+bdpool:
+  amount: 1
+  appid0: *
+  key0: *
