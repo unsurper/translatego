@@ -100,6 +100,8 @@ func HandleFile(pathname string, fname string, output string, base string) {
 		if c == io.EOF {
 			break
 		}
+		//rule, _ := regexp.Compile(`"([^\"]+)"`)
+		//results := rule.FindAllString(string(a), -1)
 		if i%row == 0 {
 			S, _ := Translate(string(a), base)
 			write.WriteString(S + "\n")
