@@ -1,7 +1,12 @@
 set:
   base: bdpool
+  type: .txt
   fr: en
   to: zh
+  start: 0
+  row: 2
+  path: C:\git\github\translatego\
+  output: C:\git\github\translatetemp\
 
 bdpool:
   amount: 1

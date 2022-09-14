@@ -1,1 +1,12 @@
-
+In terrestrial environments,
+gravity places special demands on the cardiovascular systems of animals.
+Gravitational pressure can cause blood to pool in the lower regions of the body,
+making it difficult to circulate blood to critical organs such as the brain.
+Terrestrial snakes, in particular,
+exhibit adaptations that aid in circulating blood against the force of gravity.
+The problem confronting terrestrial snakes is best illustrated by what happens to sea snakes when removed from their supportive medium.
+Because the vertical pressure gradients within the blood vessels are counteracted by similar pressure gradients in the surrounding water,
+the distribution of blood throughout the body of sea snakes remains about the same regardless of their orientation in space,
+provided they remain in the ocean.
+When removed from the water and tilted at various angles with the head up,
+however, blood pressure at their midpoint drops significantly, and at brain level falls to zero.
