@@ -10,7 +10,9 @@ import (
 	"math/rand"
 	"os"
 	"path"
+	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 	"translatego/Baidu"
 )
@@ -100,11 +102,11 @@ func HandleFile(pathname string, fname string, output string, base string) {
 		if c == io.EOF {
 			break
 		}
-		//rule, _ := regexp.Compile(`"([^\"]+)"`)
-		//results := rule.FindAllString(string(a), -1)
+
 		if i%row == 0 {
-			S, _ := Translate(string(a), base)
-			write.WriteString(S + "\n")
+			content := string(a)
+			content = Quotes(content, base)
+			write.WriteString(content + "\n")
 		} else {
 			write.WriteString(string(a) + "\n")
 		}
@@ -112,7 +114,17 @@ func HandleFile(pathname string, fname string, output string, base string) {
 	write.Flush()
 
 }
-
+func Quotes(content string, base string) string {
+	rule, _ := regexp.Compile(`"([^\"]+)"`)
+	results := rule.FindAllString(content, -1)
+	for _, v := range results {
+		s, _ := Translate(v, base)
+		s = strings.Replace(s, "“", "\"", -1)
+		s = strings.Replace(s, "”", "\"", -1)
+		content = strings.Replace(content, v, s, 1)
+	}
+	return content
+}
 func Mkdir(output string) {
 	err := os.Mkdir(output, os.ModePerm)
 	if err != nil {
