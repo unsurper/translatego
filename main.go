@@ -35,7 +35,10 @@ func FileTranslate(pathname string, output string, wg *sync.WaitGroup) error {
 			fname := fi.Name()
 			wg.Add(1)
 			go func() {
-				HandleFile(pathname, fname, output, base)
+				err := HandleFile(pathname, fname, output, base)
+				if err != nil {
+					fmt.Println("文件:", pathname, ",错误:", err)
+				}
 				wg.Done()
 			}()
 		}
@@ -73,7 +76,7 @@ func InitConfig() {
 	}
 }
 
-func HandleFile(pathname string, fname string, output string, base string) {
+func HandleFile(pathname string, fname string, output string, base string) (err error) {
 	reads, err := os.Open(pathname + fname)
 	if err != nil {
 		fmt.Printf("Error: %s\n", err)
@@ -127,7 +130,10 @@ func HandleFile(pathname string, fname string, output string, base string) {
 		if i%row == 0 {
 			content := string(a)
 			//content = Quotes(content, base)
-			content, _ = Translate(string(a), base)
+			content, err = Translate(string(a), base)
+			if err != nil {
+				return
+			}
 			write.WriteString(content + "\n")
 		} else {
 			write.WriteString(string(a) + "\n")
@@ -135,18 +141,22 @@ func HandleFile(pathname string, fname string, output string, base string) {
 	}
 	write.Flush()
 	bar.Finish(fname)
+	return
 }
 
-func Quotes(content string, base string) string {
+func Quotes(content string, base string) (string, error) {
 	rule, _ := regexp.Compile(`"([^\"]+)"`)
 	results := rule.FindAllString(content, -1)
 	for _, v := range results {
-		s, _ := Translate(v, base)
+		s, err := Translate(v, base)
+		if err != nil {
+			return "", err
+		}
 		s = strings.Replace(s, "“", "\"", -1)
 		s = strings.Replace(s, "”", "\"", -1)
 		content = strings.Replace(content, v, s, 1)
 	}
-	return content
+	return content, nil
 }
 func Mkdir(output string) {
 	err := os.Mkdir(output, os.ModePerm)
