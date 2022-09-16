@@ -15,16 +15,18 @@ import (
 	"strings"
 	"sync"
 	"translatego/Baidu"
+	bar2 "translatego/bar"
 )
 
 func main() {
+	wg := sync.WaitGroup{}
 	InitConfig()
-	FileTranslate(viper.GetString("set.path"), viper.GetString("set.output"))
+	FileTranslate(viper.GetString("set.path"), viper.GetString("set.output"), &wg)
+	wg.Wait()
 }
 
-func FileTranslate(pathname string, output string) error {
+func FileTranslate(pathname string, output string, wg *sync.WaitGroup) error {
 	//初始化翻译源
-	var wg sync.WaitGroup
 	base := viper.GetString("set.base")
 	rd, err := ioutil.ReadDir(pathname)
 	for _, fi := range rd {
@@ -36,10 +38,9 @@ func FileTranslate(pathname string, output string) error {
 				HandleFile(pathname, fname, output, base)
 				wg.Done()
 			}()
-			wg.Wait()
 		}
 		if fi.IsDir() {
-			FileTranslate(pathname+fi.Name()+"\\", output+fi.Name()+"\\")
+			FileTranslate(pathname+fi.Name()+"\\", output+fi.Name()+"\\", wg)
 		}
 	}
 	return err
@@ -73,6 +74,11 @@ func InitConfig() {
 }
 
 func HandleFile(pathname string, fname string, output string, base string) {
+	reads, err := os.Open(pathname + fname)
+	if err != nil {
+		fmt.Printf("Error: %s\n", err)
+	}
+	defer reads.Close()
 	readf, err := os.Open(pathname + fname)
 	if err != nil {
 		fmt.Printf("Error: %s\n", err)
@@ -86,34 +92,51 @@ func HandleFile(pathname string, fname string, output string, base string) {
 	defer writef.Close()
 
 	read := bufio.NewReader(readf)
+	readsize := bufio.NewReader(reads)
 	write := bufio.NewWriter(writef)
 	row := viper.GetInt("set.row")
+	size := 0
+	for ; ; size++ {
+		_, _, c := readsize.ReadLine()
+		//刷新进度条
+		if c == io.EOF {
+			break
+		}
+	}
+	//进度条显示
+	var bar bar2.Bar
+	bar.NewOption(0, int64(size+1))
 	//过滤头几行
 	for i := 0; i < viper.GetInt("set.start"); i++ {
 		a, _, c := read.ReadLine()
+		bar.Play(int64(i))
 		if c == io.EOF {
 			break
 		}
 		write.WriteString(string(a) + "\n")
 	}
+
 	//跳行翻译
 	for i := row; ; i++ {
 		a, _, c := read.ReadLine()
+		//刷新进度条
+		bar.Play(int64(i))
 		if c == io.EOF {
 			break
 		}
-
 		if i%row == 0 {
 			content := string(a)
-			content = Quotes(content, base)
+			//content = Quotes(content, base)
+			content, _ = Translate(string(a), base)
 			write.WriteString(content + "\n")
 		} else {
 			write.WriteString(string(a) + "\n")
 		}
 	}
 	write.Flush()
-
+	bar.Finish(fname)
 }
+
 func Quotes(content string, base string) string {
 	rule, _ := regexp.Compile(`"([^\"]+)"`)
 	results := rule.FindAllString(content, -1)
@@ -128,6 +151,7 @@ func Quotes(content string, base string) string {
 func Mkdir(output string) {
 	err := os.Mkdir(output, os.ModePerm)
 	if err != nil {
+		fmt.Println()
 		fmt.Println(err)
 	}
 }
