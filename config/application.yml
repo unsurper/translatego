@@ -1,12 +1,12 @@
 set:
   base: bdpool
-  type: .rpy
+  type: .ks
   fr: en
   to: zh
-  start: 2
-  row: 4
-  path: F:\goCode\translatego\
-  output: F:\goCode\translate\
+  start: 0
+  row: 1
+  path: C:\git\github\translatego\
+  output: C:\git\github\translatetemp\
 
 bdpool:
   amount: 1

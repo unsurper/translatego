@@ -15,7 +15,6 @@ import (
 	"strings"
 	"sync"
 	"translatego/Baidu"
-	bar2 "translatego/bar"
 )
 
 func main() {
@@ -107,40 +106,57 @@ func HandleFile(pathname string, fname string, output string, base string) (err 
 		}
 	}
 	//进度条显示
-	var bar bar2.Bar
-	bar.NewOption(0, int64(size+1))
+	//var bar bar2.Bar
+	//bar.NewOption(0, int64(size+1))
 	//过滤头几行
 	for i := 0; i < viper.GetInt("set.start"); i++ {
 		a, _, c := read.ReadLine()
-		bar.Play(int64(i))
+
 		if c == io.EOF {
 			break
 		}
 		write.WriteString(string(a) + "\n")
 	}
-
 	//跳行翻译
+	//decoder := unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM).NewDecoder()
 	for i := row; ; i++ {
 		a, _, c := read.ReadLine()
-		//刷新进度条
-		bar.Play(int64(i))
 		if c == io.EOF {
 			break
 		}
-		if i%row == 0 {
-			content := string(a)
-			//content = Quotes(content, base)
-			content, err = Translate(string(a), base)
-			if err != nil {
-				return
+		if i%row == 0 && len(a) >= 5 {
+			if a[3] == 84 && a[7] == 108 {
+				for _, v := range a[1 : len(a)-2] {
+					write.WriteByte(v)
+				}
+				write.WriteByte('\n')
+				write.WriteByte(0)
+				for {
+					a, _, c := read.ReadLine()
+					if c == io.EOF {
+						break
+					}
+					if a[3] == 72 {
+						write.WriteByte('\n')
+						write.WriteByte(0)
+						for _, v := range a[1 : len(a)-2] {
+							write.WriteByte(v)
+						}
+						write.WriteByte('\n')
+						write.WriteByte(0)
+						break
+					}
+					for _, v := range a[1 : len(a)-2] {
+						write.WriteByte(v)
+					}
+				}
+
 			}
-			write.WriteString(content + "\n")
 		} else {
-			write.WriteString(string(a) + "\n")
+			//write.WriteString(string(a) + "\n")
 		}
 	}
 	write.Flush()
-	bar.Finish(fname)
 	return
 }
 
