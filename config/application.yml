@@ -8,8 +8,9 @@ set:
   row: 1
   path: C:\git\github\translatego\
   output: C:\git\github\translatetemp\
+  compath: C:\git\github\translatecompound\
 
 bdpool:
   amount: 1
-  appid0: *
-  key0: *
+  appid0: 123405290008412345
+  key0: 123482fQKnspuf123456

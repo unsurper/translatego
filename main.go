@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/spf13/viper"
+	"golang.org/x/text/encoding/unicode"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -20,7 +21,8 @@ import (
 func main() {
 	wg := sync.WaitGroup{}
 	InitConfig()
-	FileTranslate(viper.GetString("set.path"), viper.GetString("set.output"), &wg)
+	//FileTranslate(viper.GetString("set.path"), viper.GetString("set.output"), &wg)
+	Filecompound(viper.GetString("set.path"), viper.GetString("set.compath"), &wg)
 	wg.Wait()
 }
 
@@ -49,7 +51,28 @@ func FileTranslate(pathname string, output string, wg *sync.WaitGroup) error {
 	}
 	return err
 }
-
+func Filecompound(pathname string, output string, wg *sync.WaitGroup) error {
+	rd, err := ioutil.ReadDir(pathname)
+	for _, fi := range rd {
+		if path.Ext(fi.Name()) == viper.GetString("set.type") {
+			Mkdir(output)
+			fname := fi.Name()
+			wg.Add(1)
+			go func() {
+				err := ComFile(pathname, fname, output)
+				if err != nil {
+					fmt.Println("文件:", pathname, ",错误:", err)
+				}
+				wg.Done()
+			}()
+			wg.Wait()
+		}
+		if fi.IsDir() {
+			FileTranslate(pathname+fi.Name()+"\\", output+fi.Name()+"\\", wg)
+		}
+	}
+	return err
+}
 func Translate(text string, base string) (string, error) {
 	count := viper.GetInt(base + ".amount")
 	r := rand.Intn(count)
@@ -120,47 +143,36 @@ func HandleFile(pathname string, fname string, output string, base string) (err 
 		write.WriteString(string(a) + "\n")
 	}
 	//跳行翻译
-	//decoder := unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM).NewDecoder()
-	for i := row; ; i++ {
+	decoder := unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM).NewDecoder()
+	i := row
+	for ; ; i++ {
 		a, _, c := read.ReadLine()
 		if c == io.EOF {
 			break
 		}
 		if i%row == 0 && len(a) >= 10 {
 			if a[3] == 84 && a[7] == 108 {
-				for _, v := range a[23 : len(a)-2] {
-					write.WriteByte(v)
-				}
-				write.WriteByte('\n')
-				write.WriteByte(0)
+				context, _ := decoder.Bytes(a[23 : len(a)-2])
+				write.WriteString(strconv.Itoa(i) + "\n")
+				write.WriteString(string(context) + "\n")
 				var text []byte
 				for {
+					i++
 					a, _, c := read.ReadLine()
 					if c == io.EOF {
 						break
 					}
 					if a[1] == 64 {
 						if a[3] == 72 && a[5] == 105 {
-							write.WriteByte('\n')
-							write.WriteByte(0)
-							for _, v := range text {
-								write.WriteByte(v)
-							}
-							write.WriteByte('\n')
-							write.WriteByte(0)
-							for _, v := range a[17 : len(a)-2] {
-								write.WriteByte(v)
-							}
-							write.WriteByte('\n')
-							write.WriteByte(0)
-							write.WriteByte('\n')
-							write.WriteByte(0)
+							context, _ := decoder.Bytes(text)
+							write.WriteString("\n" + string(context) + "\n")
+							context, _ = decoder.Bytes(a[17 : len(a)-2])
+							write.WriteString(string(context) + "\n" + "\n")
 							break
 						}
 					}
-					for _, v := range a[1 : len(a)-2] {
-						write.WriteByte(v)
-					}
+					context, _ := decoder.Bytes(a[1 : len(a)-2])
+					write.WriteString(string(context))
 					text = append(text, a[1:len(a)-2]...)
 				}
 
@@ -169,10 +181,92 @@ func HandleFile(pathname string, fname string, output string, base string) (err 
 			//write.WriteString(string(a) + "\n")
 		}
 	}
+	write.WriteString(strconv.Itoa(i) + "\n")
 	write.Flush()
 	return
 }
+func ComFile(pathname string, fname string, output string) (err error) {
+	//打开目录ks
+	reads, err := os.Open(pathname + fname)
+	if err != nil {
+		fmt.Printf("Error: %s\n", err)
+	}
+	defer reads.Close()
+	//打开要写入的ks
+	writef, err := os.OpenFile(output+fname, os.O_WRONLY|os.O_CREATE, 0666)
+	if err != nil {
+		fmt.Println("文件打开失败", err)
+	}
+	defer writef.Close()
+	//打开目录txt
+	fname = strings.Replace(fname, viper.GetString("set.type"), viper.GetString("set.outtype"), 1)
+	readf, err := os.Open(pathname + fname)
+	if err != nil {
+		fmt.Printf("Error: %s\n", err)
+	}
+	defer readf.Close()
+	readks := bufio.NewReader(reads)
+	readtxt := bufio.NewReader(readf)
+	writeks := bufio.NewWriter(writef)
+	row := viper.GetInt("set.row")
+	i := row
+	encoder := unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM).NewEncoder()
+	b, _, _ := readks.ReadLine()
+	writeks.Write(b)
+	for {
+		a, _, c := readtxt.ReadLine()
+		if c == io.EOF {
+			break
+		}
+		line, err := strconv.Atoi(string(a))
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(a))
+		for ; i < line; i++ {
+			b, _, c = readks.ReadLine()
+			if c == io.EOF {
+				break
+			}
+			for _, v := range b[1 : len(b)-2] {
+				writeks.WriteByte(v)
+			}
+			writeks.WriteByte(10)
+			writeks.WriteByte(0)
+		}
+		//过五行
+		for cishu := 0; cishu < 5; cishu++ {
+			a, _, c := readtxt.ReadLine()
+			if c == io.EOF {
+				break
+			}
+			if cishu == 2 {
+				content, _ := encoder.Bytes(a)
+				writeks.Write(content)
+				//换行
+				writeks.WriteByte(10)
+				writeks.WriteByte(0)
+				for {
+					i++
+					b, _, c = readks.ReadLine()
+					if c == io.EOF {
+						break
+					}
+					if b[1] == 64 {
+						for _, v := range b[1 : len(b)-2] {
+							writeks.WriteByte(v)
+						}
+						writeks.WriteByte(10)
+						writeks.WriteByte(0)
+						break
+					}
+				}
+			}
+		}
+	}
 
+	return
+}
 func Quotes(content string, base string) (string, error) {
 	rule, _ := regexp.Compile(`"([^\"]+)"`)
 	results := rule.FindAllString(content, -1)
