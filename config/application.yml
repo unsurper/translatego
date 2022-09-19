@@ -1,6 +1,7 @@
 set:
   base: bdpool
   type: .ks
+  outtype: .txt
   fr: en
   to: zh
   start: 0

@@ -30,6 +30,7 @@ func FileTranslate(pathname string, output string, wg *sync.WaitGroup) error {
 	rd, err := ioutil.ReadDir(pathname)
 	for _, fi := range rd {
 		if path.Ext(fi.Name()) == viper.GetString("set.type") {
+
 			Mkdir(output)
 			fname := fi.Name()
 			wg.Add(1)
@@ -40,6 +41,7 @@ func FileTranslate(pathname string, output string, wg *sync.WaitGroup) error {
 				}
 				wg.Done()
 			}()
+			wg.Wait()
 		}
 		if fi.IsDir() {
 			FileTranslate(pathname+fi.Name()+"\\", output+fi.Name()+"\\", wg)
@@ -86,7 +88,7 @@ func HandleFile(pathname string, fname string, output string, base string) (err 
 		fmt.Printf("Error: %s\n", err)
 	}
 	defer readf.Close()
-
+	fname = strings.Replace(fname, viper.GetString("set.type"), viper.GetString("set.outtype"), 1)
 	writef, err := os.OpenFile(output+fname, os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
 		fmt.Println("文件打开失败", err)
@@ -124,31 +126,42 @@ func HandleFile(pathname string, fname string, output string, base string) (err 
 		if c == io.EOF {
 			break
 		}
-		if i%row == 0 && len(a) >= 5 {
+		if i%row == 0 && len(a) >= 10 {
 			if a[3] == 84 && a[7] == 108 {
-				for _, v := range a[1 : len(a)-2] {
+				for _, v := range a[23 : len(a)-2] {
 					write.WriteByte(v)
 				}
 				write.WriteByte('\n')
 				write.WriteByte(0)
+				var text []byte
 				for {
 					a, _, c := read.ReadLine()
 					if c == io.EOF {
 						break
 					}
-					if a[3] == 72 {
-						write.WriteByte('\n')
-						write.WriteByte(0)
-						for _, v := range a[1 : len(a)-2] {
-							write.WriteByte(v)
+					if a[1] == 64 {
+						if a[3] == 72 && a[5] == 105 {
+							write.WriteByte('\n')
+							write.WriteByte(0)
+							for _, v := range text {
+								write.WriteByte(v)
+							}
+							write.WriteByte('\n')
+							write.WriteByte(0)
+							for _, v := range a[17 : len(a)-2] {
+								write.WriteByte(v)
+							}
+							write.WriteByte('\n')
+							write.WriteByte(0)
+							write.WriteByte('\n')
+							write.WriteByte(0)
+							break
 						}
-						write.WriteByte('\n')
-						write.WriteByte(0)
-						break
 					}
 					for _, v := range a[1 : len(a)-2] {
 						write.WriteByte(v)
 					}
+					text = append(text, a[1:len(a)-2]...)
 				}
 
 			}
