@@ -149,33 +149,40 @@ func HandleFile(pathname string, fname string, output string, base string) (err 
 		if c == io.EOF {
 			break
 		}
-		if i%row == 0 && len(a) >= 10 {
-			if a[3] == 84 && a[7] == 108 {
-				context, _ := decoder.Bytes(a[23 : len(a)-2])
-				write.WriteString(string(context) + "\n")
-				var text []byte
-				for {
-					a, _, c := read.ReadLine()
-					if c == io.EOF {
-						break
-					}
-					if a[1] == 64 {
-						if a[3] == 72 && a[5] == 105 {
-							context, _ := decoder.Bytes(text)
-							write.WriteString("\n" + string(context) + "\n")
-							context, _ = decoder.Bytes(a[17 : len(a)-2])
-							write.WriteString(string(context) + "\n" + "\n")
+		if len(a) >= 10 {
+			if i%row == 0 {
+				if a[3] == 84 && a[7] == 108 {
+					context, _ := decoder.Bytes(a[23 : len(a)-2])
+					write.WriteString(string(context) + "\n")
+					var text []byte
+					for {
+						a, _, c := read.ReadLine()
+						if c == io.EOF {
 							break
 						}
+						if a[1] == 64 {
+							if a[3] == 72 && a[5] == 105 {
+								context, _ := decoder.Bytes(text)
+								write.WriteString("\n" + string(context) + "\n")
+								context, _ = decoder.Bytes(a[17 : len(a)-2])
+								write.WriteString(string(context) + "\n" + "\n")
+								break
+							}
+						}
+						context, _ := decoder.Bytes(a[1 : len(a)-2])
+						write.WriteString(string(context))
+						text = append(text, a[1:len(a)-2]...)
 					}
-					context, _ := decoder.Bytes(a[1 : len(a)-2])
-					write.WriteString(string(context))
-					text = append(text, a[1:len(a)-2]...)
-				}
 
+				} else if a[3] == 82 && a[5] == 117 {
+					write.WriteString("\n")
+					context, _ := decoder.Bytes(a[1 : len(a)-2])
+					write.WriteString(string(context) + "\n")
+					write.WriteString(string(context) + "\n")
+					write.WriteString("\n")
+					write.WriteString("\n")
+				}
 			}
-		} else {
-			//write.WriteString(string(a) + "\n")
 		}
 	}
 	write.Flush()
@@ -225,6 +232,13 @@ func ComFile(pathname string, fname string, output string) (err error) {
 				over = true
 				break
 			}
+			//Ruby跳出
+			if len(b) > 10 {
+				if b[3] == 82 && b[5] == 117 {
+					break
+				}
+			}
+
 			if len(b) > 2 {
 				for _, v := range b[1 : len(b)-2] {
 					writeks.WriteByte(v)
@@ -233,6 +247,7 @@ func ComFile(pathname string, fname string, output string) (err error) {
 				writeks.WriteByte(0)
 			}
 			if len(b) > 10 {
+				//@Talk跳出
 				if b[3] == 84 && b[7] == 108 {
 					break
 				}
