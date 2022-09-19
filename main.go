@@ -136,7 +136,6 @@ func HandleFile(pathname string, fname string, output string, base string) (err 
 	//过滤头几行
 	for i := 0; i < viper.GetInt("set.start"); i++ {
 		a, _, c := read.ReadLine()
-
 		if c == io.EOF {
 			break
 		}
@@ -153,11 +152,9 @@ func HandleFile(pathname string, fname string, output string, base string) (err 
 		if i%row == 0 && len(a) >= 10 {
 			if a[3] == 84 && a[7] == 108 {
 				context, _ := decoder.Bytes(a[23 : len(a)-2])
-				write.WriteString(strconv.Itoa(i) + "\n")
 				write.WriteString(string(context) + "\n")
 				var text []byte
 				for {
-					i++
 					a, _, c := read.ReadLine()
 					if c == io.EOF {
 						break
@@ -181,7 +178,6 @@ func HandleFile(pathname string, fname string, output string, base string) (err 
 			//write.WriteString(string(a) + "\n")
 		}
 	}
-	write.WriteString(strconv.Itoa(i) + "\n")
 	write.Flush()
 	return
 }
@@ -208,63 +204,74 @@ func ComFile(pathname string, fname string, output string) (err error) {
 	readks := bufio.NewReader(reads)
 	readtxt := bufio.NewReader(readf)
 	writeks := bufio.NewWriter(writef)
-	row := viper.GetInt("set.row")
-	i := row
 	encoder := unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM).NewEncoder()
 	b, _, _ := readks.ReadLine()
 	writeks.Write(b)
-	for {
-		a, _, c := readtxt.ReadLine()
+	//找到txt中翻译行
+	a, _, c := readtxt.ReadLine()
+	for cishu := 1; cishu <= 2; cishu++ {
+		a, _, c = readtxt.ReadLine()
 		if c == io.EOF {
 			break
 		}
-		line, err := strconv.Atoi(string(a))
-		if err != nil {
-			return err
+	}
+	var over bool
+	for {
+
+		//循环读取ks找到@talk
+		for {
+			b, _, c := readks.ReadLine()
+			if c == io.EOF {
+				over = true
+				break
+			}
+			if len(b) > 2 {
+				for _, v := range b[1 : len(b)-2] {
+					writeks.WriteByte(v)
+				}
+				writeks.WriteByte(10)
+				writeks.WriteByte(0)
+			}
+			if len(b) > 10 {
+				if b[3] == 84 && b[7] == 108 {
+					break
+				}
+			}
 		}
-		fmt.Println(string(a))
-		for ; i < line; i++ {
+		if over == true {
+			break
+		}
+		//写入翻译行
+		content, _ := encoder.Bytes(a)
+		writeks.Write(content)
+		writeks.WriteByte(10)
+		writeks.WriteByte(0)
+		//更新翻译行
+		for cishu := 1; cishu <= 5; cishu++ {
+			a, _, c = readtxt.ReadLine()
+			if c == io.EOF {
+				break
+			}
+		}
+
+		//更新ks中跳过Hitret
+		for {
 			b, _, c = readks.ReadLine()
 			if c == io.EOF {
 				break
 			}
-			for _, v := range b[1 : len(b)-2] {
-				writeks.WriteByte(v)
-			}
-			writeks.WriteByte(10)
-			writeks.WriteByte(0)
-		}
-		//过五行
-		for cishu := 0; cishu < 5; cishu++ {
-			a, _, c := readtxt.ReadLine()
-			if c == io.EOF {
-				break
-			}
-			if cishu == 2 {
-				content, _ := encoder.Bytes(a)
-				writeks.Write(content)
-				//换行
+			if b[1] == 64 {
+				for _, v := range b[1 : len(b)-2] {
+					writeks.WriteByte(v)
+				}
 				writeks.WriteByte(10)
 				writeks.WriteByte(0)
-				for {
-					i++
-					b, _, c = readks.ReadLine()
-					if c == io.EOF {
-						break
-					}
-					if b[1] == 64 {
-						for _, v := range b[1 : len(b)-2] {
-							writeks.WriteByte(v)
-						}
-						writeks.WriteByte(10)
-						writeks.WriteByte(0)
-						break
-					}
-				}
+				break
 			}
 		}
-	}
 
+	}
+	writeks.Flush()
 	return
 }
 func Quotes(content string, base string) (string, error) {
