@@ -242,7 +242,8 @@ func ComFile(pathname string, fname string, output string) (err error) {
 			break
 		}
 		//写入翻译行
-		content, _ := encoder.Bytes(a)
+		as := strings.Replace(string(a), "\\", "\n", -1)
+		content, _ := encoder.Bytes([]byte(as))
 		writeks.Write(content)
 		writeks.WriteByte(10)
 		writeks.WriteByte(0)
